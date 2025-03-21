@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # PushGitHub.sh - Script to automatically update a GitHub repository
-# Usage: ./PushGitHub.sh [optional custom commit message]
+# Usage: ./PushGitHub.sh [-a|--all] [-m "Custom commit message"]
 
 # Exit on error
 set -e
@@ -66,13 +66,48 @@ if ! git remote get-url origin &> /dev/null; then
     fi
 fi
 
+# Parse command line arguments
+PUSH_ALL=false
+COMMIT_MSG=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -a|--all)
+            PUSH_ALL=true
+            shift
+            ;;
+        -m|--message)
+            if [[ -z "$2" || "$2" == -* ]]; then
+                error_exit "No message provided with -m|--message option"
+            fi
+            COMMIT_MSG="$2"
+            shift 2
+            ;;
+        -m=*|--message=*)
+            COMMIT_MSG="${1#*=}"
+            shift
+            ;;
+        *)
+            # For backward compatibility, treat remaining args as commit message
+            if [[ -z "$COMMIT_MSG" ]]; then
+                COMMIT_MSG="$*"
+                break
+            else
+                error_exit "Unknown option: $1"
+            fi
+            ;;
+    esac
+done
+
 # Get current date and time in MM/DD/YY format and 12hr time
 CURRENT_DATE=$(date +"%m/%d/%y")
 CURRENT_TIME=$(date +"%I:%M %p")
 DEFAULT_MSG="Updated: $CURRENT_DATE  $CURRENT_TIME"
 
 # Use custom commit message if provided, otherwise use default
-COMMIT_MSG="${*:-$DEFAULT_MSG}"
+if [[ -z "$COMMIT_MSG" ]]; then
+    COMMIT_MSG="$DEFAULT_MSG"
+fi
 info_message "Commit message: $COMMIT_MSG"
 
 # Stage all changes
@@ -91,6 +126,11 @@ git commit -m "$COMMIT_MSG"
 
 # Push to GitHub
 info_message "Pushing to GitHub..."
-git push origin "$(git branch --show-current)"
+if [[ "$PUSH_ALL" = true ]]; then
+    info_message "Pushing all branches..."
+    git push --all origin
+else
+    git push origin "$(git branch --show-current)"
+fi
 
 success_message "✅ Successfully pushed to GitHub repository: $REPO_NAME"
