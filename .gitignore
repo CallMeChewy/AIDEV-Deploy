@@ -37,6 +37,4 @@ wheels/
 
 # Custom exclusions
 ..Exclude/
-..Scripts/
-..Next/
-..Vision/
+
